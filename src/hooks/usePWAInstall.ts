@@ -169,6 +169,49 @@ export function usePWAInstall() {
       });
     }
 
+    // PWA 설치 조건 상세 체크
+    const checkPWAInstallability = async () => {
+      const manifestLink = document.querySelector('link[rel="manifest"]');
+      if (manifestLink) {
+        try {
+          const manifestResponse = await fetch(
+            manifestLink.getAttribute('href')!
+          );
+          const manifest = await manifestResponse.json();
+          console.log('📋 Manifest 내용:', manifest);
+
+          // Manifest 필수 필드 체크
+          const requiredFields = [
+            'name',
+            'short_name',
+            'start_url',
+            'display',
+            'icons',
+          ];
+          const missingFields = requiredFields.filter(
+            (field) => !manifest[field]
+          );
+          console.log('📋 Manifest 필수 필드 체크:', {
+            requiredFields,
+            missingFields,
+            hasAllRequired: missingFields.length === 0,
+          });
+        } catch (error) {
+          console.error('❌ Manifest 로드 실패:', error);
+        }
+      }
+
+      // 브라우저별 PWA 지원 체크
+      console.log('🌐 브라우저 PWA 지원 체크:', {
+        hasBeforeInstallPrompt: 'onbeforeinstallprompt' in window,
+        hasAppInstalled: 'onappinstalled' in window,
+        userAgent: navigator.userAgent,
+        isSecureContext: window.isSecureContext,
+      });
+    };
+
+    checkPWAInstallability();
+
     // 초기 상태 확인
     checkInstallStatus();
 
@@ -179,6 +222,24 @@ export function usePWAInstall() {
     // 앱 설치 완료 이벤트
     console.log('👂 appinstalled 이벤트 리스너 등록');
     window.addEventListener('appinstalled', handleAppInstalled);
+
+    // beforeinstallprompt 이벤트가 발생하지 않는 경우를 위한 폴백
+    const fallbackTimer = setTimeout(() => {
+      console.log(
+        '⏰ beforeinstallprompt 이벤트 타임아웃 - 수동 설치 프롬프트 활성화'
+      );
+      const browser = detectBrowser();
+
+      // PWA 요구사항이 충족되었지만 beforeinstallprompt가 발생하지 않은 경우
+      if (!state.isInstallable && !state.isInstalled && !state.isStandalone) {
+        console.log('🔄 수동으로 설치 프롬프트 활성화');
+        setState((prev) => ({
+          ...prev,
+          isInstallable: true,
+          showInstallPrompt: true,
+        }));
+      }
+    }, 3000); // 3초 후 폴백 실행
 
     // display-mode 변경 감지 (PWA로 전환됨을 감지)
     const mediaQuery = window.matchMedia('(display-mode: standalone)');
@@ -200,6 +261,7 @@ export function usePWAInstall() {
 
     return () => {
       console.log('🧹 이벤트 리스너 정리');
+      clearTimeout(fallbackTimer);
       window.removeEventListener(
         'beforeinstallprompt',
         handleBeforeInstallPrompt
