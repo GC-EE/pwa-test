@@ -20,15 +20,33 @@ export default function PWAInstallPrompt({
     dismissInstallPrompt,
   } = usePWAInstall();
 
+  console.log('🎯 PWAInstallPrompt 렌더링:', {
+    isInstallable,
+    isInstalled,
+    isStandalone,
+    isIOS,
+    isSafari,
+    isAndroid,
+    isChrome,
+    showInstallPrompt,
+  });
+
   // 이미 설치되었거나 PWA 모드로 실행 중이면 표시하지 않음
   if (isInstalled || isStandalone) {
+    console.log('❌ 이미 설치됨 또는 PWA 모드 - 프롬프트 숨김');
     return null;
   }
 
   // 설치 가능하지 않거나 프롬프트를 숨겨야 하는 경우
   if (!isInstallable || !showInstallPrompt) {
+    console.log('❌ 설치 불가능 또는 프롬프트 숨김:', {
+      isInstallable,
+      showInstallPrompt,
+    });
     return null;
   }
+
+  console.log('✅ PWA 설치 프롬프트 표시');
 
   const getInstallMessage = () => {
     if (isIOS && isSafari) {

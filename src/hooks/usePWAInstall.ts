@@ -45,6 +45,17 @@ export function usePWAInstall() {
       window.matchMedia('(display-mode: standalone)').matches ||
       (window.navigator as any).standalone === true;
 
+    console.log('🔍 브라우저 감지:', {
+      userAgent,
+      isIOS,
+      isAndroid,
+      isChrome,
+      isSafari,
+      isStandalone,
+      displayMode: window.matchMedia('(display-mode: standalone)').matches,
+      navigatorStandalone: (window.navigator as any).standalone,
+    });
+
     return { isIOS, isAndroid, isChrome, isSafari, isStandalone };
   }, []);
 
@@ -53,6 +64,12 @@ export function usePWAInstall() {
     const browser = detectBrowser();
     const isInstalled =
       browser.isStandalone || localStorage.getItem('pwa-installed') === 'true';
+
+    console.log('📱 PWA 설치 상태 확인:', {
+      browser,
+      isInstalled,
+      localStorage: localStorage.getItem('pwa-installed'),
+    });
 
     setState((prev) => ({
       ...prev,
@@ -63,8 +80,14 @@ export function usePWAInstall() {
 
   // 설치 프롬프트 이벤트 핸들러
   const handleBeforeInstallPrompt = useCallback((e: Event) => {
+    console.log('🎉 beforeinstallprompt 이벤트 발생!', e);
     e.preventDefault();
     const event = e as BeforeInstallPromptEvent;
+
+    console.log('📦 설치 프롬프트 설정:', {
+      platforms: event.platforms,
+      event,
+    });
 
     setState((prev) => ({
       ...prev,
@@ -125,24 +148,58 @@ export function usePWAInstall() {
   }, []);
 
   useEffect(() => {
+    console.log('🚀 usePWAInstall 훅 초기화');
+
+    // PWA 요구사항 체크
+    console.log('🔍 PWA 요구사항 체크:', {
+      isHTTPS:
+        location.protocol === 'https:' || location.hostname === 'localhost',
+      hasManifest: !!document.querySelector('link[rel="manifest"]'),
+      hasServiceWorker: 'serviceWorker' in navigator,
+      serviceWorkerRegistration: navigator.serviceWorker?.controller,
+    });
+
+    // Service Worker 등록 상태 확인
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        console.log('🔧 Service Worker 등록 상태:', {
+          registrations: registrations.length,
+          controllers: registrations.map((reg) => reg.active?.scriptURL),
+        });
+      });
+    }
+
     // 초기 상태 확인
     checkInstallStatus();
 
     // Chrome/Edge의 beforeinstallprompt 이벤트
+    console.log('👂 beforeinstallprompt 이벤트 리스너 등록');
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
     // 앱 설치 완료 이벤트
+    console.log('👂 appinstalled 이벤트 리스너 등록');
     window.addEventListener('appinstalled', handleAppInstalled);
 
     // display-mode 변경 감지 (PWA로 전환됨을 감지)
     const mediaQuery = window.matchMedia('(display-mode: standalone)');
     const handleDisplayModeChange = () => {
+      console.log('📱 display-mode 변경 감지');
       checkInstallStatus();
     };
 
     mediaQuery.addEventListener('change', handleDisplayModeChange);
 
+    // 현재 상태 로그
+    console.log('📊 현재 PWA 상태:', {
+      isInstallable: state.isInstallable,
+      isInstalled: state.isInstalled,
+      isStandalone: state.isStandalone,
+      showInstallPrompt: state.showInstallPrompt,
+      installPrompt: !!state.installPrompt,
+    });
+
     return () => {
+      console.log('🧹 이벤트 리스너 정리');
       window.removeEventListener(
         'beforeinstallprompt',
         handleBeforeInstallPrompt
